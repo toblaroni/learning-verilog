@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 
 module blinker #(
     parameter SPEED = 100
@@ -7,10 +8,10 @@ module blinker #(
     output reg signal
 );
 
-    reg [$clog2(SPEED+1):0] counter;    // Counter will have minimum width for SPEED
+    reg [$clog2(SPEED)-1:0] counter;    // Counter will have minimum width for SPEED
 
     always @(posedge clk) begin
-        if (counter == SPEED) begin
+        if (counter == SPEED-1) begin
             counter <= 0;
             signal <= ~signal;
         end else begin 
