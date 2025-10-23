@@ -4,8 +4,9 @@
 
 `timescale 1ns/1ps
 
-module transmitter # 
+module uart_tx # 
 (
+    // Defaults
     parameter BAUD_RATE = 9600,
     parameter CLOCK_FREQ = 50000000,   // 50 MHz (Base clock)
     localparam CLKS_PER_BIT = CLOCK_FREQ / BAUD_RATE
@@ -41,38 +42,57 @@ always @(posedge clk) begin
         busy <= 1'b1;
         tx <= 1'b1;             // Send out 1 for IDLE
         bit_index <= 3'b0;
-    end
+    end else begin
+        // FSM
+        case (state)
+            IDLE: begin
+                tx <= 1'b1;            
+                busy <= 1'b0;           
+                bit_index <= 3'b0;
+                bit_count <= 32'b0;     // Not strictly necessary but i think it's cleaner this way...
 
-    case (state)
-        IDLE: begin
-            tx <= 1'b1;            
-            busy <= 1'b0;           
-            bit_index <= 3'b0;
-
-            if (start) begin
-                state <= START;
+                if (start) begin
+                    // Load the parallel data_in port into the data_reg
+                    data_reg <= data_in;
+                    state <= START;
+                    busy <= 1'b1;
+                end
             end
-        end
 
-        START: begin
-            // Load the parallel data_in port into the data_reg
-            data_reg <= data_in;
-            // Send the start bit
-            tx <= 1'b0;
-        end
+            START: begin
+                tx <= 1'b0;
+                if (baud_tick) begin
+                    // Send the start bit
+                    state <= DATA;      
+                end
+            end
 
+            DATA: begin
+                tx <= data_reg[bit_index];
 
-        DATA: begin
-        end
+                if (baud_tick) begin
+                    if (bit_index == 3'b111) begin
+                        state <= STOP;
+                     end else
+                        bit_index <= bit_index + 1;
+                end
+            end
 
-        STOP: begin
-        end
+            STOP: begin
+                // logical-high for 1 bit
+                tx <= 1'b1;
+                if (baud_tick) begin
+                    state <= IDLE;      // Return to IDLE
+                    busy <= 1'b0;
+                end
+            end
 
-        default: begin
-        end
-    endcase
-
-    bit_count <= (baud_tick) ? 0 : bit_count + 1;
+            default: begin
+                state <= IDLE;
+            end
+        endcase
+        bit_count <= (baud_tick) ? 0 : bit_count + 1;
+    end
 end
 
 endmodule
