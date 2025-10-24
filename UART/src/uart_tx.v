@@ -8,8 +8,7 @@ module uart_tx #
 (
     // Defaults
     parameter BAUD_RATE = 9600,
-    parameter CLOCK_FREQ = 50000000,   // 50 MHz (Base clock)
-    localparam CLKS_PER_BIT = CLOCK_FREQ / BAUD_RATE
+    parameter CLOCK_FREQ = 50000000   // 50 MHz (Base clock)
 )
 (
     input wire clk,             // BCLK
@@ -21,12 +20,14 @@ module uart_tx #
     output reg tx               // 1 bit (serial)
 );
 
+localparam CLKS_PER_BIT = CLOCK_FREQ / BAUD_RATE;
+
 reg [2:0] state;        // 4 States
 reg [7:0] data_reg;
 reg [31:0] bit_count;
 reg [2:0] bit_index;
 
-wire baud_tick = (bit_count == CLKS_PER_BIT - 1);
+wire baud_tick = (bit_count == CLKS_PER_BIT-1);
 
 // UART transmission states. 3-bits incase u want to add parity bit later on...
 localparam IDLE  = 3'b00;
