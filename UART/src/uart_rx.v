@@ -36,13 +36,18 @@ always @(posedge clk) begin
         IDLE: begin
             bit_index <= 3'b0;
             bit_count <= 32'b0;
-            baud_counter <= 32'b0;
+            sample_count <= 32'b0;
 
             if (data_in == 1'b0) begin
+                state <= START; 
             end
         end
 
         START: begin
+            // Read in the start bit
+            if (baud_tick) begin
+                
+            end
         end
 
         DATA: begin
@@ -51,6 +56,7 @@ always @(posedge clk) begin
         STOP: begin
         end
     endcase
+
     bit_count <= (baud_tick) ? 0 : bit_count + 1;
     sample_count <= (sample_tick) ? 0 : bit_count + 1;
 end
