@@ -10,6 +10,7 @@ module uart_rx #
 (
     input wire clk,
     input wire data_in,     // Received bits (serial)
+    input wire rst,
 
     output reg [7:0] rx
 );
@@ -30,41 +31,49 @@ localparam DATA  = 3'b10;
 localparam STOP  = 3'b11;
 
 always @(posedge clk) begin
-    case (state) 
-        IDLE: begin
-            bit_index <= 3'b0;
-            bit_count <= 32'b0;
+    if (rst) begin
+        state <= IDLE;
+        bit_count <= 0;
+        bit_index <= 0;
 
-            if (data_in == 1'b0) begin
-                state <= START; 
+    end else begin
+        case (state) 
+            IDLE: begin
+                bit_index <= 3'b0;
+                bit_count <= 32'b0;
+
+                if (data_in == 1'b0) begin
+                    state <= START; 
+                end
             end
-        end
 
-        START: begin
-            // Make sure that it's actually the start bit and not noise
-            if (sample_tick && data_in == 1'b1) begin
-                state <= IDLE;  // If noise go back
+            START: begin
+                // Make sure that it's actually the start bit and not noise
+                if (sample_tick && data_in == 1'b1) begin
+                    state <= IDLE;  // If noise go back
+                end else if (baud_tick) 
+                    state <= DATA;   // Move onto the next stage
             end
-            if (baud_tick) state <= DATA;   // Move onto the next stage
-        end
 
-        DATA: begin
-            if (sample_tick)
-                rx[bit_index] <= data_in;
-            if (baud_tick) begin
-                if (bit_index == 3'b111)
-                    state <= STOP;
-                else
-                    bit_index <= bit_index + 1;
+            DATA: begin
+                if (sample_tick)
+                    rx[bit_index] <= data_in;
+                if (baud_tick) begin
+                    if (bit_index == 3'b111)
+                        state <= STOP;
+                    else
+                        bit_index <= bit_index + 1;
+                end
             end
-        end
 
-        STOP: begin
-            if (sample_tick && data_in == 1'b1)
-                state <= IDLE;
-        end
-        default: state <= IDLE;
-    endcase
+            STOP: begin
+                if (sample_tick && data_in == 1'b1)
+                    state <= IDLE;
+            end
+
+            default: state <= IDLE;
+        endcase
+    end
 
     bit_count <= (baud_tick) ? 0 : bit_count + 1;
 end
