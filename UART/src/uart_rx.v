@@ -20,6 +20,7 @@ localparam CLKS_PER_BIT = CLOCK_FREQ / BAUD_RATE;
 reg [31:0] bit_count;
 reg [2:0] bit_index;
 reg [2:0] state;
+reg [7:0] rx_shift;     // Hold partial data
 
 wire baud_tick = (bit_count == CLKS_PER_BIT-1);
 wire sample_tick = (bit_count == (CLKS_PER_BIT-1)/2);
@@ -48,16 +49,17 @@ always @(posedge clk) begin
             end
 
             START: begin
-                // Make sure that it's actually the start bit and not noise
+                // Make sure it's not noise
                 if (sample_tick && data_in == 1'b1) begin
-                    state <= IDLE;  // If noise go back
-                end else if (baud_tick) 
-                    state <= DATA;   // Move onto the next stage
+                    state <= IDLE;  // Noise
+                end else if (baud_tick && state == START) begin
+                    state <= DATA;
+                end
             end
 
             DATA: begin
                 if (sample_tick)
-                    rx[bit_index] <= data_in;
+                    rx_shift[bit_index] <= data_in;
                 if (baud_tick) begin
                     if (bit_index == 3'b111)
                         state <= STOP;
@@ -67,8 +69,14 @@ always @(posedge clk) begin
             end
 
             STOP: begin
-                if (sample_tick && data_in == 1'b1)
+                if (sample_tick && data_in == 1'b1) begin
+                    rx <= rx_shift;     
+                end
+
+                if (baud_tick)
+                    // Enter IDLE regardless...? What to do if no stop bit?
                     state <= IDLE;
+
             end
 
             default: state <= IDLE;
