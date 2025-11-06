@@ -54,7 +54,9 @@ always @(posedge clk) begin
                     state <= IDLE;  // Noise
                 end else if (baud_tick && state == START) begin
                     state <= DATA;
-                end
+                    bit_count <= 0;
+                end else
+                    bit_count <= bit_count + 1;
             end
 
             DATA: begin
@@ -65,7 +67,9 @@ always @(posedge clk) begin
                         state <= STOP;
                     else
                         bit_index <= bit_index + 1;
-                end
+                    bit_count <= 0;
+                end else
+                    bit_count <= bit_count + 1;
             end
 
             STOP: begin
@@ -73,17 +77,18 @@ always @(posedge clk) begin
                     rx <= rx_shift;     
                 end
 
-                if (baud_tick)
+                if (baud_tick) begin
                     // Enter IDLE regardless...? What to do if no stop bit?
                     state <= IDLE;
+                    bit_count <= 0;
+                end else
+                    bit_count <= bit_count + 1;
 
             end
 
             default: state <= IDLE;
         endcase
     end
-
-    bit_count <= (baud_tick) ? 0 : bit_count + 1;
 end
 
 endmodule
