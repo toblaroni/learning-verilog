@@ -13,6 +13,7 @@ module uart_rx #
     input wire rst,
 
     output reg rx_ready,
+    output reg frame_error,     // Error flag
     output reg [7:0] rx
 );
 
@@ -38,7 +39,16 @@ always @(posedge clk) begin
         bit_count <= 0;
         bit_index <= 0;
         rx_ready <= 0;
+        rx_shift <= 0;
+        frame_error <= 0;
+        rx <= 0;
     end else begin
+        // Clear these every clock cycle
+        // These are short 1 cycle bursts to tell the system there's an error
+        // or the data is ready.
+        rx_ready <= 0;
+        frame_error <= 0;
+
         case (state) 
             IDLE: begin
                 bit_index <= 3'b0;
@@ -51,9 +61,10 @@ always @(posedge clk) begin
 
             START: begin
                 // Make sure it's not noise
-                if (sample_tick && data_in == 1'b1) begin
-                    state <= IDLE;  // Noise
-                end else if (baud_tick && state == START) begin
+                if (sample_tick) begin
+                    if (data_in == 1'b1) 
+                        state <= IDLE;  // Noise
+                end else if (baud_tick) begin
                     state <= DATA;
                     bit_count <= 0;
                 end else
@@ -74,13 +85,16 @@ always @(posedge clk) begin
             end
 
             STOP: begin
-                if (sample_tick && data_in == 1'b1) begin
-                    rx <= rx_shift;     
-                    rx_ready <= 1'b1;
+                if (sample_tick) begin
+                    if (data_in == 1'b1) begin
+                        rx <= rx_shift;     
+                        rx_ready <= 1'b1;
+                        frame_error <= 1'b0;
+                    end else
+                        frame_error <= 1'b1;
                 end 
 
                 if (baud_tick) begin
-                    // Enter IDLE regardless...? What to do if no stop bit?
                     state <= IDLE;
                     bit_count <= 0;
                 end else

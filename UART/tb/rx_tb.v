@@ -14,6 +14,7 @@ reg data;
 reg rst;
 
 wire [7:0] rx;
+wire frame_error;
 
 integer i;
 
@@ -26,43 +27,48 @@ uart_rx #(
     .clk (clk),
     .rst (rst),
     .data_in (data),
-    .rx (rx)
+    .rx (rx),
+    .frame_error (frame_error)
 );
 
-reg [7:0] char;
+task send_byte;
+    input [7:0] tx_data;
+   begin
+        // Start bit
+        data = 1'b0;
+        #(CLK_PERIOD_NS * CLKS_PER_BIT);
+        
+        // Data bits (LSB first)
+        for (i = 0; i < 8; i = i + 1) begin
+            data = tx_data[i];
+            #(CLK_PERIOD_NS * CLKS_PER_BIT);
+        end
+        
+        // Stop bit
+        data = 1'b1;
+        #(CLK_PERIOD_NS * CLKS_PER_BIT);
+    end
+endtask
 
 initial begin
     $dumpfile("uart_rx_tb.vcd");
     $dumpvars(0, rx_tb);
 
     clk = 0;
-    char = 8'b10101010;
     rst = 1;    // Reset everything
     data = 1;   // IDLE
 
     #(CLK_PERIOD_NS * CLKS_PER_BIT * 2);
     rst = 0;
-    data = 0;   // Start bit
 
-    #(CLK_PERIOD_NS * CLKS_PER_BIT);  // Hold for a full bit
-
-    // DATA
-    for (i = 0; i < 8; i = i + 1) begin
-        data = char[i];
-        #(CLK_PERIOD_NS * CLKS_PER_BIT);
-    end
-
-    // STOP BIT
-    #(CLK_PERIOD_NS * CLKS_PER_BIT); 
-    data = 1; 
+    send_byte(8'hAA);
 
     #(CLK_PERIOD_NS * 32);
-    if (rx == char)
+    if (rx == 8'hAA)
         $display("SUCCESS: Data received correctly! rx=%b", rx);
     else
-        $display("FAILURE: Received %b, Expected %b", rx, char);
+        $display("FAILURE: Received %b, Expected %b", rx, 8'hAA);
     
-    char = 8'b11111111;     // New character
     rst = 1;
     #(CLK_PERIOD_NS * CLKS_PER_BIT * 2);  // Hold reset 
     rst = 0;
