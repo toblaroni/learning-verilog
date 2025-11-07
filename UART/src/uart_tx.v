@@ -43,6 +43,7 @@ always @(posedge clk) begin
         busy <= 1'b1;
         tx <= 1'b1;             // Send out 1 for IDLE
         bit_index <= 3'b0;
+
     end else begin
         // FSM
         case (state)
@@ -64,8 +65,10 @@ always @(posedge clk) begin
                 tx <= 1'b0;
                 if (baud_tick) begin
                     // Send the start bit
-                    state <= DATA;      
-                end
+                    state <= DATA;
+                    bit_count <= 0;
+                end else
+                    bit_count <= bit_count + 1;
             end
 
             DATA: begin
@@ -76,7 +79,9 @@ always @(posedge clk) begin
                         state <= STOP;
                      end else
                         bit_index <= bit_index + 1;
-                end
+                    bit_count <= 0;
+                end else
+                    bit_count <= bit_count + 1;
             end
 
             STOP: begin
@@ -85,14 +90,13 @@ always @(posedge clk) begin
                 if (baud_tick) begin
                     state <= IDLE;      // Return to IDLE
                     busy <= 1'b0;
-                end
+                    bit_count <= 0;
+                end else
+                    bit_count <= bit_count + 1;
             end
 
-            default: begin
-                state <= IDLE;
-            end
+            default: state <= IDLE;
         endcase
-        bit_count <= (baud_tick) ? 0 : bit_count + 1;
     end
 end
 

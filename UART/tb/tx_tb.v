@@ -7,6 +7,7 @@ module tx_tb;
 localparam CLOCK_FREQ = 1_843_200;
 localparam BAUD_RATE  = 115_200;
 localparam CLK_PERIOD_NS = 1_000_000_000 / CLOCK_FREQ;
+localparam CLKS_PER_BIT = CLOCK_FREQ / BAUD_RATE;
 
 reg clk;
 reg rst;
@@ -35,38 +36,45 @@ initial begin
     $dumpvars(0, tx_tb);
 
     clk = 0;
-    rst = 0;
+    rst = 1;
     start = 0;
     data = 8'b01010101;
     
-    // After 5 clock cycles we send the data
-    #(CLK_PERIOD_NS * 5) begin
-        start = 1;
-    end
+    #(CLK_PERIOD_NS * CLKS_PER_BIT * 2);
+    rst = 0;
+    start = 1;
 
-    #(CLK_PERIOD_NS * 1) begin
-        start = 0;
-    end
-
-    /* 
-    * Over the next 10 bit periods the data will be sent. 
-    * Each bit takes 16 base clock cycles. 
-    * Therefore we need to wait clk_period_ns * 16 * 10 for the full data frame.
-    */
-
-    // wait(busy == 0);
-
-    // Test reset
-    #(CLK_PERIOD_NS * 16 * 11);
-    // Reset 
-    rst = 1;
+    #(CLK_PERIOD_NS);    // Hold start for 1 period
     start = 0;
 
-    #(CLK_PERIOD_NS * 2)
-    rst = 0;
-    start = 1;      // Send the data again
+    // Wait for transmission to finish
+    @(negedge busy);
+    $display("Transmission finished at time %t", $time);
 
-    #(CLK_PERIOD_NS * 16 * 11);
+    if (tx == 1'b1)
+        $display("SUCCESS 1: TX line returned to IDLE high.");
+    else
+        $display("FAILURE 1: TX line did not return to IDLE high.");
+
+    rst = 1;
+    data = 8'b11001100;
+    #(CLK_PERIOD_NS * CLKS_PER_BIT * 2);    // Hold reset
+
+    rst = 0;
+    start = 1;
+
+    #(CLK_PERIOD_NS);    // Hold start for 1 period
+    start = 0;
+
+    // Wait for transmission to finish
+    @(negedge busy);
+    $display("Transmission 2 finished at time %t", $time);
+
+    if (tx == 1'b1)
+        $display("SUCCESS 2: TX line returned to IDLE high.");
+    else
+        $display("FAILURE 2: TX line did not return to IDLE high.");
+    
     $finish;
 end
 endmodule

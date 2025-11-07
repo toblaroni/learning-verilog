@@ -12,6 +12,7 @@ module uart_rx #
     input wire data_in,     // Received bits (serial)
     input wire rst,
 
+    output reg rx_ready,
     output reg [7:0] rx
 );
 
@@ -36,7 +37,7 @@ always @(posedge clk) begin
         state <= IDLE;
         bit_count <= 0;
         bit_index <= 0;
-
+        rx_ready <= 0;
     end else begin
         case (state) 
             IDLE: begin
@@ -75,7 +76,8 @@ always @(posedge clk) begin
             STOP: begin
                 if (sample_tick && data_in == 1'b1) begin
                     rx <= rx_shift;     
-                end
+                    rx_ready <= 1'b1;
+                end 
 
                 if (baud_tick) begin
                     // Enter IDLE regardless...? What to do if no stop bit?
