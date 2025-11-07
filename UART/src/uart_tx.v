@@ -40,10 +40,10 @@ always @(posedge clk) begin
     if (rst) begin
         bit_count <= 32'b0;     // Restart counter
         state <= IDLE;
-        busy <= 1'b1;
+        busy <= 1'b0;
         tx <= 1'b1;             // Send out 1 for IDLE
         bit_index <= 3'b0;
-
+        data_reg <= 0;
     end else begin
         // FSM
         case (state)
