@@ -33,7 +33,8 @@ uart_rx #(
 
 task send_byte;
     input [7:0] tx_data;
-   begin
+    input good_stop_bit;
+    begin
         // Start bit
         data = 1'b0;
         #(CLK_PERIOD_NS * CLKS_PER_BIT);
@@ -45,8 +46,18 @@ task send_byte;
         end
         
         // Stop bit
-        data = 1'b1;
+        data = good_stop_bit ? 1'b1 : 1'b0;
         #(CLK_PERIOD_NS * CLKS_PER_BIT);
+    end
+endtask
+
+task check_sent_data;
+    input [7:0] tx_data;
+    begin
+        if (rx == tx_data)
+            $display("SUCCESS: Data received correctly! rx=%b", rx);
+        else
+            $display("FAILURE: Received %b, Expected %b", rx, tx_data);
     end
 endtask
 
@@ -58,37 +69,27 @@ initial begin
     rst = 1;    // Reset everything
     data = 1;   // IDLE
 
+    $display("=== Starting UART Receiver Test Bench ===\n");
+
     #(CLK_PERIOD_NS * CLKS_PER_BIT * 2);
     rst = 0;
 
-    send_byte(8'hAA);
+    $display("--- Test 1: Normal Transmission (0xAA) ---");
+    send_byte(8'hAA, 1);
+    #(CLK_PERIOD_NS * 10);
+    check_sent_data(8'hAA);
 
-    #(CLK_PERIOD_NS * 32);
-    if (rx == 8'hAA)
-        $display("SUCCESS: Data received correctly! rx=%b", rx);
-    else
-        $display("FAILURE: Received %b, Expected %b", rx, 8'hAA);
+    $display("\n--- Test 2: Normal Transmission (0x55) ---");
+    send_byte(8'h55, 1);
+    #(CLK_PERIOD_NS * 10);
+    check_sent_data(8'h55);
     
-    rst = 1;
-    #(CLK_PERIOD_NS * CLKS_PER_BIT * 2);  // Hold reset 
-    rst = 0;
-    data = 0;
-    #(CLK_PERIOD_NS * CLKS_PER_BIT);
-    for (i = 0; i < 8; i = i + 1) begin
-        data = char[i];
-        #(CLK_PERIOD_NS * CLKS_PER_BIT);
-    end
+    $display("\n--- Test 3: Normal Transmission (0x00) ---");
+    send_byte(8'h00, 1);
+    #(CLK_PERIOD_NS * 10);
+    check_sent_data(8'h00);
 
-    // STOP BIT
-    #(CLK_PERIOD_NS * CLKS_PER_BIT); 
-    data = 1; 
-
-    #(CLK_PERIOD_NS * CLKS_PER_BIT * 2);
-    if (rx == char)
-        $display("SUCCESS: Data received correctly! rx=%b", rx);
-    else
-        $display("FAILURE: Received %b, Expected %b", rx, char);
-
+    $display("\n=== All Tests Completed ===");
     $finish;
 end
 

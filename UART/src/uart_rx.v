@@ -64,6 +64,8 @@ always @(posedge clk) begin
                 if (sample_tick) begin
                     if (data_in == 1'b1) 
                         state <= IDLE;  // Noise
+                    else
+                        bit_count <= bit_count + 1;
                 end else if (baud_tick) begin
                     state <= DATA;
                     bit_count <= 0;
