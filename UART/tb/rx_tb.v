@@ -1,6 +1,5 @@
 `timescale 1ns/1ps
 
-
 module rx_tb;
 
 // CLKS_PER_BIT clock cycles per bit
