@@ -13,6 +13,7 @@ module uart_rx #
     input wire rst,
 
     output reg rx_ready,
+    output reg busy,
     output reg frame_error,     // Error flag
     output reg [7:0] rx
 );
@@ -42,6 +43,7 @@ always @(posedge clk) begin
         rx_shift <= 0;
         frame_error <= 0;
         rx <= 0;
+        busy <= 0;
     end else begin
         // Clear these every clock cycle
         // These are short 1 cycle bursts to tell the system there's an error
@@ -53,9 +55,11 @@ always @(posedge clk) begin
             IDLE: begin
                 bit_index <= 3'b0;
                 bit_count <= 32'b0;
+                busy <= 0;
 
                 if (data_in == 1'b0) begin
                     state <= START; 
+                    busy <= 1;
                 end
             end
 
@@ -99,6 +103,7 @@ always @(posedge clk) begin
                 if (baud_tick) begin
                     state <= IDLE;
                     bit_count <= 0;
+                    busy <= 0;
                 end else
                     bit_count <= bit_count + 1;
 

@@ -12,9 +12,11 @@ localparam CLKS_PER_BIT  = CLOCK_FREQ / BAUD_RATE;
 reg clk;
 reg data;
 reg rst;
+reg [7:0] char;
 
 wire [7:0] rx;
 wire frame_error;
+wire rx_ready;
 
 integer i;
 
@@ -28,7 +30,8 @@ uart_rx #(
     .rst (rst),
     .data_in (data),
     .rx (rx),
-    .frame_error (frame_error)
+    .frame_error (frame_error),
+    .rx_ready (rx_ready)
 );
 
 task send_byte;
@@ -89,8 +92,50 @@ initial begin
     #(CLK_PERIOD_NS * 10);
     check_sent_data(8'h00);
 
+    $display("\n--- Test 4: Bad Stop Bit (0xAA) ---");
+    $display("Check for frame_error.");
+    send_byte(8'hAA, 0);
+
+    $display("\n--- Test 5: Reset during reception ---");
+    // Start transmission
+    data = 1'b0;  // Start bit
+    #(CLK_PERIOD_NS * CLKS_PER_BIT);
+    char = 8'hAA;
+    // Send first few data bits
+    for (i = 0; i < 3; i = i + 1) begin
+        data = char[i];
+        #(CLK_PERIOD_NS * CLKS_PER_BIT);
+    end
+    // Apply reset in middle of reception
+    rst = 1'b1;
+    data = 1;   // IDLE
+    #(CLK_PERIOD_NS * 5);
+    rst = 1'b0;
+    #(CLK_PERIOD_NS * 10);
+    
+    // Verify we can still receive after reset
+    send_byte(8'hAA, 1);
+    #(CLK_PERIOD_NS * 10);
+    check_sent_data(8'hAA);
+
+    $display("\n--- Test 6: Start bit noise rejection ---");
+    data = 1'b0;  // Fake start bit (noise)
+    #(CLK_PERIOD_NS * CLKS_PER_BIT / 4);  // Only quarter bit period
+    data = 1'b1;  
+    #(CLK_PERIOD_NS * CLKS_PER_BIT);
+    check_sent_data(8'hAA); // Nothing changed
+
     $display("\n=== All Tests Completed ===");
     $finish;
 end
 
+// Monitor to track state changes
+always @(posedge clk) begin
+    if (rx_ready) begin
+        $display("rx_ready detected");
+    end
+    if (frame_error) begin
+        $display("frame_error detected");
+    end
+end
 endmodule
