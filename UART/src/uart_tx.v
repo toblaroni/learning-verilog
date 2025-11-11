@@ -1,6 +1,4 @@
 // UART Transmitter
-// 8 data bits, no parity bit, 1 stop bit (8N1).
-// Assuming a 50MHz system clock
 
 `timescale 1ns/1ps
 
