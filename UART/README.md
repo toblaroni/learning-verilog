@@ -1,7 +1,7 @@
 # UART in Verilog
 Implementing a UART in Verilog to understand how computers communicate and to learn Verilog.
 
-### What is UART?
+### [What is UART?](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter)
 Universal Asynchronous Receiver-Transmitter is a bit of hardware for sending data in serial. It uses a start/stop bits for communication timing. The UART device handles the data logic while the translation of data into electricity is handled externally through a driver.
 Bytes of data are sequentially transmitted bit-by-bit and then reassembled by the receiver into complete bytes.
 Serial transmission with one wire is less costly then transmitting through multiple wires. Shift registers are used to convert between serial and parallel forms.
